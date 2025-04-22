@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"name": "WebSite_Stage",
+			"path": "."
+		},
+		{
+			"name": "src",
+			"path": "../../../Bureau/src"
+		}
+	],
+	"settings": {}
+}
