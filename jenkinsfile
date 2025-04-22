@@ -1,0 +1,106 @@
+pipeline {
+    agent any
+
+    environment {
+        registry = "omarbh1501/stage_repo"
+        registryCredential = 'docker-hub-credentials'
+        dockerImage = ''
+        containerName = 'my_app_container'
+        port = '8081'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                script {
+                    echo 'Checking out the repository...'
+                    git branch: 'main', url: '${env.WEB_REPO}'
+                }
+            }
+        }
+
+        stage('Run Comparison Script') {
+            steps {
+                script {
+                    echo 'Running comparison.js script...'
+                    def exitCode = sh(script: 'node comparison.js', returnStatus: true)
+                   
+                    if (exitCode != 0) {
+                        echo "comparison.js returned false. Stopping the pipeline."
+                        error("Pipeline stopped due to comparison failure.")
+                        currentBuild.result = 'False'
+                        
+                    } else {
+                        currentBuild.result = 'SUCCESS'
+                        echo "comparison.js returned true. Continuing the pipeline."
+                    }
+                }
+            }
+        }
+
+        stage('Docker ') {
+            when {
+                expression {
+                    return currentBuild.result == 'SUCCESS'
+                }
+            }
+            stages {
+                stage('Cloning Our Git Repository') {
+                    steps {
+                        script {
+                            git url: '${env.WEB_REPO}', branch: 'main'
+                        }
+                    }
+                }
+
+               stage('Docker Compose') {
+            steps {
+                script {
+                    withCredentials([usernamePassword(credentialsId: registryCredential, passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME')]) {
+                        sh """
+                        
+                        docker-compose -f docker-compose.yml build
+                        docker-compose -f docker-compose.yml push
+                        """
+                    }
+                }
+            }
+               }
+
+                stage('Deploy the App on Current VM using Docker Compose') {
+                    steps {
+                        script {
+                            sh """
+                            docker-compose -f docker-compose.yml down
+
+                            docker-compose -f docker-compose.yml up -d
+                            """
+                        }
+                    }
+                }
+
+                stage('Cleaning Up') {
+                    steps {
+                        script {
+                            sh """
+                            docker image prune -f
+                            """
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            echo 'Finished pipeline execution.'
+        }
+        success {
+            echo 'Deployment successful!'
+        }
+        failure {
+            echo 'Pipeline failed. Please check the logs.'
+        }
+    }
+}
