@@ -1,0 +1,57 @@
+---
+- name: Install Apache and Docker on Ubuntu servers
+  hosts: all                
+  become: true             
+
+  tasks:
+    # --- Partie Apache ---
+    - name: Mettre à jour le cache apt
+      apt:
+        update_cache: yes
+
+    - name: Installer Apache2
+      apt:
+        name: apache2
+        state: present
+
+    - name: Démarrer et activer le service Apache
+      service:
+        name: apache2
+        state: started
+        enabled: yes
+
+    # --- Partie Docker ---
+    - name: Installer paquets requis pour Docker
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+        state: present
+
+    - name: Ajouter la clé GPG officielle de Docker
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Ajouter le dépôt Docker officiel
+      apt_repository:
+        repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu focal stable
+        state: present
+
+    - name: Mettre à jour le cache apt après ajout dépôt Docker
+      apt:
+        update_cache: yes
+
+    - name: Installer Docker Engine
+      apt:
+        name: docker-ce
+        state: present
+
+    - name: Démarrer et activer le service Docker
+      service:
+        name: docker
+        state: started
+        enabled: yes
